@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Sistema de Ensamblaje</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../CSS/login.css">
+    <style>
+        
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-title">Iniciar Sesión</div>
+        <form id="loginForm" autocomplete="off">
+            <div class="login-field">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+            <div class="login-field">
+                <label for="puestoSelect">Puesto</label>
+                <select id="puestoSelect" name="puestoSelect" required>
+                    <option value="" disabled selected>Seleccione su puesto</option>
+                    <!--a futuro, se deberia realizar una busqueda para ver los puestos habilitados.-->
+                    <option value="a1">a1</option>
+                    <option value="a2">a2</option>
+                    <option value="a3">a3</option>
+                </select>
+               
+            </div>
+            <div class="login-field">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button class="login-btn" id="btnIngresar" type="submit">Ingresar</button>
+            <div class="login-error" id="loginError"></div>
+        </form>
+    </div>
+    <script src="../JS/logic_Login.js"></script>
+    
+</body>
+</html>

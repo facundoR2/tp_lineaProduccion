@@ -1,0 +1,203 @@
+body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #fafbfc;
+            color: #222;
+        }
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header .title {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .header .user-info {
+            font-size: 0.95rem;
+            color: #666;
+        }
+        .main-content {
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .left-panel {
+            flex: 1 1 340px;
+            max-width: 370px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            padding: 24px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .info-block {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 24px;
+            margin-bottom: 8px;
+        }
+        .info-item {
+            flex: 1 1 140px;
+            background: #f6f7f9;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-size: 0.98rem;
+        }
+        .info-label {
+            font-size: 0.82rem;
+            color: #888;
+        }
+        .info-value {
+            font-weight: bold;
+            font-size: 1.05rem;
+            margin-top: 2px;
+        }
+        .scan-block label {
+            font-size: 0.95rem;
+            color: #444;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .scan-block input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1.1rem;
+            border: 1.5px solid #d0d4da;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: #f8fafb;
+        }
+        .scan-block button {
+            width: 100%;
+            padding: 10px;
+            background: #222;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.05rem;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        .scan-block button:disabled {
+            background: #aaa;
+        }
+        .scanned-list {
+            background: #f6f7f9;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-top: 8px;
+        }
+        .scanned-list strong {
+            font-size: 0.98rem;
+            color: #333;
+        }
+        .scanned-list ul {
+            margin: 8px 0 0 0;
+            padding-left: 18px;
+            font-size: 0.97rem;
+        }
+        #mensaje.success { color: #1a7f37; }
+        #mensaje.error { color: #d32f2f; }
+        .right-panel {
+            flex: 2 1 500px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            padding: 24px 24px 20px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+        .instructions-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+        }
+        .proceso {
+            background: #232323;
+            color: #fff;
+            border-radius: 8px;
+            padding: 18px 18px 12px 18px;
+            margin-bottom: 18px;
+        }
+        .proceso strong {
+            color: #fff;
+            font-size: 1.05rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .proceso h4 {
+            font-size: 1.08rem;
+            font-weight: 600;
+            color: #f1f1f1;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        .proceso img {
+            display: block;
+            margin: 0 auto 10px auto;
+            max-width: 180px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .componente-azul {
+            background: linear-gradient(180deg, #1e6fe8 0%, #125ecf 100%);
+            border: 2px solid #125ecf;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 12px;
+            display: inline-block;
+            transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 120ms ease;
+            box-shadow: 0 6px 18px rgba(18,94,207,0.16);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .componente-azul:hover,
+        .componente-azul:focus {
+            background: #ffffff;
+            color: #125ecf;
+            box-shadow: 0 8px 22px rgba(18,94,207,0.10);
+            transform: translateY(-2px);
+            outline: none;
+        }
+
+        .componente-azul:focus-visible {
+            box-shadow: 0 0 0 4px rgba(18,94,207,0.12);
+        }
+
+        /* Hacer que enlaces o botones internos hereden el color */
+        .componente-azul a,
+        .componente-azul button {
+            color: inherit;
+            background: transparent;
+            border: none;
+            padding: 0;
+            font: inherit;
+        }
+       
+        .footer {
+            background: #222;
+            color: #fff;
+            font-size: 0.98rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0px;
+            padding: 8px 24px;
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 10;
+        }
+        @media (max-width: 900px) {
+            .main-content { flex-direction: column; gap: 18px; padding: 12px; }
+            .left-panel, .right-panel { max-width: 100%; }
+        }

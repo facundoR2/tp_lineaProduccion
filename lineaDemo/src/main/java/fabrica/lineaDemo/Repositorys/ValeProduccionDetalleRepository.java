@@ -15,7 +15,7 @@ public interface ValeProduccionDetalleRepository extends JpaRepository<ValeProdu
     //boolean para verificar si existe un registro con el ultimo componente del anterior puesto.
     boolean existsByEstadoAndPuestoAndComponente_Nombre(Integer estado,Integer nroPuesto,String nombreComponente);
 
-
+    ValeProduccionDetalle findByCodigoProductoAndEstado(String codigoserial,Integer estado);
 
     //buscar registros con el mismo ValeProduccion.
     List<ValeProduccionDetalle> findByValeProduccion(ValeProduccion valeProduccion);

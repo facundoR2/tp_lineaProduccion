@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface ValeProduccionRepository extends JpaRepository<ValeProduccion,Integer> {
 
+    //encontrar vale por serial y estado:(puesto del usuario).
+    ValeProduccion findBySerialAndEstado(String codigoProductoFinal,Integer estado);
 
     //encontrar vale por serial.
     ValeProduccion findBySerial(String codigoProductoFinal);

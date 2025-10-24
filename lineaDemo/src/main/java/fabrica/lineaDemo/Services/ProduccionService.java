@@ -53,6 +53,15 @@ public class ProduccionService {
 
     //region:funciones sencillas.
 
+    public void pasarEstadoDePuesto(PasarPuestoDTO pasarPuestoDTO){
+        //inicializamos
+        ValeProduccion valepd = new ValeProduccion();
+        //se busca el vale con el serial el producto y el estado( el puesto actual del usuario)
+        valepd = produccionRepository.findBySerialAndEstado(pasarPuestoDTO.getCodigoProducto(),pasarPuestoDTO.getPuestoActual());
+        valepd.setEstado(pasarPuestoDTO.getPuestoActual()+1);
+       produccionRepository.save(valepd);
+    }
+
     public List<ComponenteDTO> convertirADTO(List<Producto> componentes){
 
         List<ComponenteDTO> dtos = new ArrayList<>();
@@ -99,7 +108,7 @@ public class ProduccionService {
         //generamos el codigo.
         String codigo = codigoService.generarCodigo(codigoProducto);
         //agregamos el estado.
-        nuevoproducto.setEstado(2);  //1= completado, 2= en proceso, 3 = error
+        nuevoproducto.setEstado(1);  //el puesto que inicia los vales, en este caso el 1.
 
         //agregamos el codigo al ValeProduccion.
         nuevoproducto.setSerial(codigo); // agregamos el codigo al ValeProduccion(cabecera).
@@ -162,12 +171,12 @@ public class ProduccionService {
 
         //si no existe, registrar el nuevo valeProduccion.
         ValeProduccion valeProduccion = new ValeProduccion();
-        //buscamos el valeDetalle con el serial del producto y estado en proceso.
-         Optional<ValeProduccion> valeEncontrado =  produccionRepository.findFirstBySerialAndEstadoOrderByIdValeAsc(cargaRegistroDTO.getCodigoProducto(), 2);
+        //buscamos el valeDetalle con el serial del producto y estado que coincida con el puesto
+         Optional<ValeProduccion> valeEncontrado =  produccionRepository.findFirstBySerialAndEstadoOrderByIdValeAsc(cargaRegistroDTO.getCodigoProducto(), cargaRegistroDTO.getPuestoActual());
         if (valeEncontrado.isPresent()){
             valeProduccion = valeEncontrado.get();
         }else {
-            throw new IllegalArgumentException("No se encontro el ValeProduccion con el serial del Producto en estado:Proceso");
+            throw new IllegalArgumentException("No se encontro el ValeProduccion con el serial del Producto con estado coincidente con el puesto:"+cargaRegistroDTO.getPuestoActual());
         }
 
 
@@ -198,14 +207,14 @@ public class ProduccionService {
         //cambiamos el estado de los valeDetalle del producto a completado.
         List<ValeProduccionDetalle> detalles = detalleRepository.findByCodigoProducto(codigoProducto);
         for (ValeProduccionDetalle detalle : detalles){
-            detalle.setEstado(1); //indicamos que esta completo.
+            detalle.setEstado(100); //indicamos que esta completo.
         }
         detalleRepository.saveAll(detalles); //guardamos la modificacion.
 
         //
         ValeProduccion vale = produccionRepository.findBySerial(codigoProducto);
         //cambiamos el estado a completado.
-        vale.setEstado(1);
+        vale.setEstado(100);
         produccionRepository.save(vale);
         List<Producto> componentesARestar = new ArrayList<>();
         //paso 2 : restar la cantidad usada a la tabla productos.
@@ -310,9 +319,10 @@ public class ProduccionService {
     }
 
     public boolean noEsUltimoPuesto(String codigoProductoSerial, Integer puestoActual){
-
+        System.out.println("iniciando proceso: noEsUltimoPuesto");
         //buscamos el codigoformula buscando el vale.
-        ValeProduccion valel = produccionRepository.findFirstBySerialAndEstadoOrderByIdValeAsc(codigoProductoSerial,2).orElseThrow(() -> new IllegalArgumentException("no se encontro el vale para el serial dado:"));
+        ValeProduccion valel = produccionRepository.findFirstBySerialAndEstadoOrderByIdValeAsc(codigoProductoSerial,puestoActual)
+                .orElseThrow(() -> new IllegalArgumentException("no se encontro el vale para el serial dado:"+codigoProductoSerial));
 
         //paso 1 : obtenemos todos los formulaPuesto de la formula.
         List<FormulaPuesto> puestosFormula = formupuestorepo.findByFormulaDetalle_Formula_CodigoFormula(valel.getFormula().getCodigoFormula());
@@ -438,12 +448,18 @@ public class ProduccionService {
 
     //proceso para consultar pendientes para puestos.
 
-    public ValeLectura ConsultarPendientes ( String codigoProducto,Integer puestoActual,UsuarioDTO usuarioDTO) throws NoSuchFieldException {
+    public ValeLectura ConsultarPendientes ( ConsultarPendientesDTO consultarPendientesDTO){
         //variables locales.
+        ValeLectura respuesta = new ValeLectura();
         String CodigoProductofinal = "";
         ValeProduccion vale = new ValeProduccion();
-        //buscar el ValeProduccion con estado = 2(Pendiente).
-        Optional<ValeProduccion> primerVale = produccionRepository.findFirstByEstadoOrderByIdValeAsc(2);
+        //buscar el ValeProduccion con estado = correspondiente al puesto, el estado 100 es completado.
+        Optional<ValeProduccion> primerVale = produccionRepository.findFirstByEstadoOrderByIdValeAsc(consultarPendientesDTO.getIdPuestoActual());
+        if (primerVale.isEmpty()){
+             respuesta.setEstado("ESPERANDO_VALE_ANTERIOR");
+             respuesta.setMensaje("Aun no se genero el vale del puesto anterior para este producto");
+             return respuesta;
+        }
         if (primerVale.isPresent()){
             vale = primerVale.get();
 
@@ -452,7 +468,9 @@ public class ProduccionService {
 
 
         }else {
-            throw new NoSuchFieldException("no se encontro un vale en proceso para ese producto.");
+            respuesta.setEstado("ERROR");
+            respuesta.setMensaje("no se encontro un vale en proceso con ese estado para ese producto.");
+            return respuesta;
         }
         //paso 2: obtener los datos de referencia del puesto anterior usando el valeProduccion anexado
         List<ValeProduccionDetalle> componentesAgregados = detalleRepository.findByValeProduccion(vale);
@@ -474,10 +492,10 @@ public class ProduccionService {
             throw new IllegalStateException("no hay componentes completos del puesto anterior para este producto");
         }
 
-        nuevaLectura.setPuestoActual(puestoActual);
-        nuevaLectura.setUsuario(usuarioDTO);
+        nuevaLectura.setPuestoActual(consultarPendientesDTO.getIdPuestoActual());
+        nuevaLectura.setUsuario(consultarPendientesDTO.getUsuario());
         nuevaLectura.setTiempo(LocalDateTime.now());
-        nuevaLectura.setCodigoProducto(codigoProducto);
+        nuevaLectura.setCodigoProducto(consultarPendientesDTO.getCodigoProducto());
         nuevaLectura.setEstado("EN PROCESO");
         nuevaLectura.setIdTrazado(CodigoProductofinal);
         return nuevaLectura;

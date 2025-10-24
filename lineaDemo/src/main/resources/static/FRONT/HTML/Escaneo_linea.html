@@ -47,14 +47,14 @@
                 </div>
             </div>
             <div id="mensaje"></div>
-            <div class="scan-block">
+            <div id="scanblock" class="scan-block">
                 <label for="codigoComponente">Escanear Componente</label>
                 <input type="text" id="codigoComponente" placeholder="Escanee o ingrese el código del componente">
                 <button id="agregarComponente">Añadir Componente</button>
                 <div class="scanned-list" id="scannedlist">
                     <strong>Componentes Anexados:</strong>
 
-                    <ul id="listaComponentesArr"></ul>
+                    <ul id="listaComponentes"></ul>
                 </div>
                 
             </div>
@@ -67,12 +67,31 @@
             
         </div>
     </div>
-    <div class="footer">
-        <span>🔗 Sistema Conectado</span>
+    <div id="footer" class="footer">
+        <span id="EstadoServidor">🔗 Sistema Conectado</span>
         <span>🔢 <div id="cantMaximaComponentes"></div></span>
         <span>Última actualización: 14:03:18</span>
     </div>
-    <script src="../JS/logic_escaneo_linea.js"></script>
+
+    <script type="module">
+        import { inicializarServidor } from "../JS/servidor.js";
+        
+        (async () => {
+            const base = await inicializarServidor();
+            if(base){
+                console.log(`✅ Servidor inicializado en: ${base}`);
+                document.getElementById("EstadoServidor").textContent = `🔗 Sistema Conectado a ${base}`;
+
+                const {inicializarEscaneo} = await import("../JS/logic_escaneo_linea.js");
+
+                inicializarEscaneo();
+            }else{
+                document.getElementById("EstadoServidor").textContent = "❌ Error: No se pudo conectar al servidor.";
+                alert("No se pudo conectar al servidor. Por favor, verifique la conexión de red.");
+            }
+        })();
+    </script>
+    
     
 </body>
 </html>

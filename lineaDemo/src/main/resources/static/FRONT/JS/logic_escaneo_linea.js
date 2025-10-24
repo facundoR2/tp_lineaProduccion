@@ -1,30 +1,9 @@
 // Lógica para la página de escaneo de línea de producción
-
-
-//Variables de parametro.
-const urlParams = new URLSearchParams(window.location.search);
-const username = urlParams.get('username');
-if (username) {
-    window.username = username;
-}else{
-    window.username = "invitado";
-}
-const puesto = urlParams.get('puesto');
-if (puesto) {
-    window.puesto = parseInt(puesto, 10);
-}else{
-    window.puesto = 0;
-}
+import { apiFetch } from './apiFetch.js';
 
 
 
-// Variables globales
-let pasoActual = 0;
-const pasos = [
-    { nombre: "Escanear Componentes", descripcion: "Escanee todos los componentes necesarios." },
-    { nombre: "Verificar Componentes", descripcion: "Verifique que todos los componentes estén correctos." },
-    { nombre: "Finalizar Proceso", descripcion: "Confirme y finalice el proceso." }
-];
+
 
 window.listaComponentesArr = [];
 window.procesoActual = 0;
@@ -39,8 +18,8 @@ const btnLogout = document.getElementById('logoutButton');
 const btnHelp = document.getElementById('helpButton');
 // Variables para usuario
 
-//let userId = 0; // Valor por defecto
-//let nombre = "Invitado"; // Valor por defecto
+
+
 
 //generamos Un ValeLectura para trackear el progreso de cada Producto.
 
@@ -70,8 +49,44 @@ const UsuarioDTO = {
     username: "",
     nombre: ""
 }
+// ================
+// Función para buscar la información principal desde la BD
+//
+async function buscarInfo() {
+    let IdpuestoActual = localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0;
+    try{
+        //llamamos al apifetch.
+        const data = await apiFetch('/api/produccion/info-general', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(IdpuestoActual),
+        });
 
-function ConsultarComponentesPorPuesto(codigoProducto){
+        // Actualiza la información en la página
+        document.getElementById('codigoProducto').textContent = data.codigoProducto || 'N/A';
+        localStorage.setItem('codigoProducto', data.codigoProducto || '');
+        document.getElementById('ordenCarga').textContent = data.ordenProduccion || 'N/A';
+        document.getElementById('counter_product').textContent = data.cantidadProduccion || 'N/A';
+        window.codigoProducto = data.codigoProducto || '';
+        window.userId = UsuarioDTO?.id || 0;
+        document.getElementById('cantMaximaComponentes').textContent = `Máximo Componentes de la formula: ${data.cantMaxcompPuesto || 4}`;
+
+
+        //guardamos la cantidad maxima de componentes en localstorage.
+        localStorage.setItem('maxComponentes', data.cantMaxcompPuesto || 4);
+        localStorage.setItem('cantidadActual', 0);
+        // Consultar los procesos y pasos asociados al producto
+        ConsultarComponentesPorPuesto(data.codigoProducto);
+
+    }
+    catch(error){
+        console.error('Error al buscar la información principal:', error);
+    }
+
+    
+}
+
+async function ConsultarComponentesPorPuesto(codigoProducto){
     //consultamos la info sobre el producto a crear.
 
     if (!codigoProducto) {
@@ -88,84 +103,50 @@ function ConsultarComponentesPorPuesto(codigoProducto){
         idpuestoActual: id,
     };
 
-    fetch('http://localhost:9090/api/proceso/traer',{
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(InfoParaProcesoDTO)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if(data){
-            console.log("respuesta obtenida",data);
-            const ComponentesObtenidos = data.componentes || [];
-            //guardamos el contenedor de los componentes.
-            const ComponentesContainer = document.getElementById('ComponentesContainer');
-            if (ComponentesContainer) {
-                // Limpiamos el contenedor antes de agregar nuevos procesos
-                ComponentesContainer.innerHTML = '';
-                ComponentesObtenidos.forEach((Componente, componenteIndex) => {
-                    const ComponenteDiv = document.createElement('div');
-                    ComponenteDiv.className = `componente-azul componente-index-${componenteIndex}`;
-                    ComponenteDiv.innerHTML = `
-                        <h4>Componente ${componenteIndex + 1}: ${Componente.nombre || 'N/A'}</h4>
-                        <p><strong>Código:</strong> ${Componente.codigoProducto || 'N/A'}</p>
-                        <p><strong>Cantidad Requerida:</strong> ${Componente.cantidad || 'N/A'}</p>
-                    `;
-                    ComponentesContainer.appendChild(ComponenteDiv);
-                    // Agregamos el componente al array global de Componentes
-                    ComponentesContainer.appendChild(ComponenteDiv);
-                });
-            }
+    //llamamos al apifetch.
+    try{
+        const data = await apiFetch('/api/proceso/traer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(InfoParaProcesoDTO),
+        });
+
+        if(!data){
+            console.warn("No se recibieron datos de componentes para el proceso.");
+            return;
         }
-    })
-    .catch(error => {
+        console.log("respuesta obtenida",data);
+
+        const ComponentesObtenidos = data.componentes || [];
+        const ComponentesContainer = document.getElementById('ComponentesContainer');
+        if(!ComponentesContainer){
+            console.warn("No se encontró el contenedor de componentes en el html");
+            return;
+        }
+
+        //limpiamos variables.
+        ComponentesContainer.innerHTML = '';
+        ComponentesObtenidos.forEach((Componente, componenteIndex) => {
+            const ComponenteDiv = document.createElement('div');
+            ComponenteDiv.className = `componente-azul componente-index-${componenteIndex}`;
+            ComponenteDiv.innerHTML = `
+                <h4>Componente ${componenteIndex + 1}: ${Componente.nombre || 'N/A'}</h4>
+                <p><strong>Código:</strong> ${Componente.codigoProducto || 'N/A'}</p>
+                <p><strong>Cantidad Requerida:</strong> ${Componente.cantidad || 'N/A'}</p>
+            `;
+            ComponentesContainer.appendChild(ComponenteDiv);
+        });
+    } catch(error){
         console.error('Error al consultar los componentes del proceso:', error);
-    });
-
-
-    // una vez conseguidos los datos. los procesamos y los pasamos a la funcion.
-
-    //mandamos a una funcion para renderizar los procesos y llevarlos al html.
+    }
 
 }
-
-
-// Función para buscar la información principal desde la BD
-function buscarInfo() {
-    let IdpuestoActual = localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0;
     
-    fetch('http://localhost:9090/api/produccion/info-general',{
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(IdpuestoActual),
 
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Actualiza la información en la página
-        document.getElementById('codigoProducto').textContent = data.codigoProducto || 'N/A';
-        localStorage.setItem('codigoProducto', data.codigoProducto || '');
-        document.getElementById('ordenCarga').textContent = data.ordenProduccion || 'N/A';
-        document.getElementById('counter_product').textContent = data.cantidadProduccion || 'N/A';
-        window.codigoProducto = data.codigoProducto || '';
-        window.userId = UsuarioDTO.id || 0;
-        document.getElementById('cantMaximaComponentes').textContent = `Máximo Componentes de la formula: ${data.cantMaxcompPuesto || 4}`;
-        //agregamos la cantidad maxima de componentes un item en localstorage.
-        localStorage.setItem('maxComponentes', data.cantMaxcompPuesto || 4);
 
-        //generamos un item en el localstorage para la cantidad actual.
-        localStorage.setItem('cantidadActual', 0);
 
-        // Consultar los procesos y pasos asociados al producto
-        ConsultarComponentesPorPuesto(data.codigoProducto);
-    })
-    .catch(error => {
-        console.error('Error al buscar la información principal:', error);
-    });
-   
 
-    
-}
+
 
 // Función para accionar la UI según el puesto del usuario
 function accionarPorPuesto() {
@@ -215,19 +196,20 @@ function actualizarInformacionVale(ValeLecturaCapturado) {
 }
 
 
-function crearValeLectura(UsuarioDTO) {
+async function crearValeLectura(UsuarioDTO) {
+    console.log("Creando un nuevo vale de lectura para el puesto:", UsuarioDTO.id);
     //creamos un UsuarioDTO
-    
-    fetch(`http://localhost:9090/api/produccion/crear-Vale`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(UsuarioDTO)
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Error al crear el vale');
-        return response.json();
-    })
-    .then(valeLectura => {
+    try{
+        UsuarioDTO.id = parseInt(localStorage.getItem('puesto'), 10) || 0;
+        UsuarioDTO.username = window.username || "invitado";
+        UsuarioDTO.nombre = window.nombre || "Invitado";
+
+        const valeLectura = await apiFetch(`/api/produccion/crear-Vale`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(UsuarioDTO)
+        });
+
         // Guarda el valeLectura en una variable global o úsalo en la UI
         window.Lectura = valeLectura;
         console.log('Vale creado:', valeLectura);
@@ -242,36 +224,60 @@ function crearValeLectura(UsuarioDTO) {
             mensaje.textContent = "Vale creado correctamente.";
             mensaje.className = "success";
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error al crear el vale:', error);
         const mensaje = document.getElementById('mensaje');
         if (mensaje) {
             mensaje.textContent = "Error al crear el vale. Intente nuevamente.";
             mensaje.className = "error";
         }
-    });
+    }
+    
+    
 }
 
-function consultarPendientes() {
-    //generamos un payload.
-    const ConsultarPendientesDTO ={
-        codigoProducto: localStorage.getItem('codigoProducto') || "",
-        idPuestoActual: localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0,
-        usuarioDTO: UsuarioDTO,
-    }
+async function consultarPendientes() {
+    console.log("Consultando pendientes para el puesto:", localStorage.getItem('puesto'));
+    try{
+        //generamos un payload.
+        const ConsultarPendientesDTO ={
+            codigoProducto: localStorage.getItem('codigoProducto') || "",
+            idPuestoActual: localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0,
+            usuarioDTO: UsuarioDTO,
+        }
+        //llamamos al apifetch.
+        const valeLectura = await apiFetch(`/api/produccion/pendientes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ConsultarPendientesDTO)
+        });
+        
+        switch (valeLectura.estado) {
+            
+            case "ESPERANDO_VALE_ANTERIOR":
+                const mensajeEspera = document.getElementById('mensaje');
+                mensajeEspera.textContent = "⏳ Esperando a que se complete el vale del puesto anterior.";
+                mensajeEspera.className = "info";
+                setTimeout(consultarPendientes, 5000); // Reintentar después de 5 segundos
+                return;
+                
+            case "EN PROCESO":
+                const mensajeEnProceso = document.getElementById('mensaje');
+                mensajeEnProceso.textContent = "✅Encontrado Vale en proceso. Cargando Datos";
+                mensajeEnProceso.className = "success";
+                break;
 
-
-    fetch(`http://localhost:9090/api/produccion/pendientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ConsultarPendientesDTO)
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Error al consultar pendientes');
-        return response.json();
-    })
-    .then(valeLectura => {
+            case "ERROR":
+                const mensajeError = document.getElementById('mensaje');
+                mensajeError.textContent = "❌ Error al consultar los pendientes. Intente nuevamente.";
+                mensajeError.className = "error";
+                return;
+            default:
+                const mensajeErrorDesconocido = document.getElementById('mensaje');
+                mensajeErrorDesconocido.textContent = "❌ Estado desconocido del vale. Intente nuevamente.";
+                mensajeErrorDesconocido.className = "error";
+                break;
+        }
         // Guarda el valeLectura en una variable global o úsalo en la UI
         window.Lectura = valeLectura;
         console.log('Vale creado:', valeLectura);
@@ -286,51 +292,118 @@ function consultarPendientes() {
             mensaje.textContent = "Vale cargado correctamente.";
             mensaje.className = "success";
         }
-    }).catch(error => {
-        console.error('Error al crear el vale:', error);
+    } catch (error) {
+        console.error('Error al el valeLectura.mensaje, :', error);
         const mensaje = document.getElementById('mensaje');
         if (mensaje) {
-            mensaje.textContent = "Error al crear el vale. Intente nuevamente.";
+            mensaje.textContent = "Error al consultar los pendientes. Intente nuevamente.";
             mensaje.className = "error";
         }
-    });
-   
+    }
 }
 
 // Función para manejar el escaneo de un componente
 
-async function EscanearCodigo() {
-    //obtenemos el maximo de componentes a escanear.
-    maxComponentes = localStorage.getItem('maxComponentes') ? parseInt(localStorage.getItem('maxComponentes'), 10) : 4;
-    //obtenemos la cantidad actual de componentes escaneados.
-    const cantidadActual = localStorage.getItem('cantidadActual') ? parseInt(localStorage.getItem('cantidadActual'), 10) : 0;
-    if (cantidadActual >= maxComponentes) {
-        //limpiamos el mensaje anterior.
-        mensaje.textContent = " ";
-        mensaje.textContent = "Ya se escanearon todos los componentes requeridos.";
+async function agregarComponenteAlGlobal() {
+    const mensaje = document.getElementById('mensaje');
+    const codigoComponenteInput = document.getElementById('codigoComponente');
+
+    mensaje.textContent = "✅ Componente agregado correctamente.";
+    mensaje.className = "success";
+
+    codigoComponenteInput.value = "";
+    codigoComponenteInput.focus();
+
+    let cantidad_actual = parseInt(localStorage.getItem('cantidadActual') || '0', 10);
+    cantidad_actual += 1;
+    localStorage.setItem('cantidadActual', cantidad_actual);
+
+    return cantidad_actual; // devuelve la nueva cantidad actual
+}
+
+export async function EscanearCodigo() {
+    try {
+        const codigoComponenteInput = document.getElementById('codigoComponente');
+        const mensaje = document.getElementById('mensaje');
+        const codigo = codigoComponenteInput.value.trim();
+
+        if (!codigo) {
+            mensaje.textContent = "⚠ Ingrese o escanee un código válido.";
+            mensaje.className = "error";
+            return false;
+        }
+
+        // 🔹 Paso 1: registrar componente en backend
+        await escanearComponente(codigo); // esta función ya debe hacer el POST
+
+        // 🔹 Paso 2: actualizar contador local y mensaje
+        const cantidadActual = await agregarComponenteAlGlobal();
+
+        // 🔹 Paso 3: obtener máximo
+        const maxComponentes = parseInt(localStorage.getItem('maxComponentes') || '0', 10);
+
+        mensaje.textContent = `✅ Componente ${codigo} registrado (${cantidadActual}/${maxComponentes})`;
+        mensaje.className = "success";
+
+        // 🔹 Paso 4: verificar si ya se completaron todos
+        if (cantidadActual >= maxComponentes) {
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        console.error("❌ Error en EscanearCodigo:", error);
+        const mensaje = document.getElementById('mensaje');
+        mensaje.textContent = "Error al registrar el componente.";
         mensaje.className = "error";
-        return;
+        return false;
     }
-    const codigo = codigoComponenteInput.value
-    if (!codigo) {
-        mensaje.textContent = " ";
-        mensaje.textContent = "Ingrese un código de componente.";
-        mensaje.className = "error";
-        return;
-    }
-    escanearComponente(codigo);
-    agregarComponenteAlGlobal(codigo);
-};
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     
 
 async function obtenerNombreProductoPorCodigo(codigo) {
     try {
-        const response = await fetch(`http://localhost:9090/api/producto/nombre?codigo=${encodeURIComponent(codigo)}`,{
-            method: 'GET',
+        const data =  await apiFetch(`/api/producto/nombre`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'plain/text' },
+            body: codigo,
         });
-        if (!response.ok) throw new Error('No se pudo obtener el nombre del producto');
-        return await response.text();
+        return data.nombre || "Desconocido";
+
     }catch (error) {
         console.error('Error al buscar el nombre del producto:', error);
         return "";
@@ -338,79 +411,18 @@ async function obtenerNombreProductoPorCodigo(codigo) {
 };
 // funcionalidad para cada escaneo de componente.
 async function escanearComponente(codigo) {
+    console.log("Escaneando componente con código:", codigo);
+
     // Asegura que exista un <ul id="listaComponentes">; si no, lo crea y lo inserta en un lugar razonable
     let listaElement = document.getElementById('listaComponentes');
     if (!listaElement) {
         listaElement = document.createElement('ul');
         listaElement.id = 'listaComponentes';
-        const contenedor = document.getElementById('scanned-list') || document.body;
+        const contenedor = document.getElementById('scanned-list') || document.body.scanblock.scanned-list || document.body;
         contenedor.appendChild(listaElement);
     }
-    window.listaComponentesArr = window.listaComponentesArr || [];
-    // paso 1: verificamos si el componente ya existe en la lista.
-    const existente = window.listaComponentesArr.find(c => c.codigo === codigo);
-    if (existente) {
-        // incrementa la cantidad localmente
-        existente.cantidad = (existente.cantidad || 1) + 1;
-        if (mensaje) {
-            mensaje.textContent = "El componente ya está registrado. Se incrementó la cantidad.";
-            mensaje.className = "info";
-        }
-        // actualizar UI inmediatamente
-        actualizarLista();
-
-        // actualizamos cantidadActual en storage
-        let cantidad_actual = localStorage.getItem('cantidadActual') ? parseInt(localStorage.getItem('cantidadActual'), 10) : 0;
-        cantidad_actual += 1;
-        localStorage.setItem('cantidadActual', cantidad_actual);
-        console.log("Cantidad actualizada en storage:", cantidad_actual);
-
-        // continuar: igualmente enviamos al backend la nueva cantidad para que lo registre allí también
-        // creamos el payload usando la cantidad actualizada
-        const payloadExistente = {
-            codigoProducto: document.getElementById('codigoProductoFinal') ? document.getElementById('codigoProductoFinal').textContent : window.codigoProducto || '',
-            codigoComponente: codigo,
-            cantidadComponente: existente.cantidad,
-            puestoActual: parseInt(localStorage.getItem('puesto'), 10) || 0,
-            usuario: {
-                id: window.userId || 0,
-                username: window.username || "invitado",
-                nombre: window.nombre || "Invitado"
-            }
-        };
-
-        fetch('http://localhost:9090/api/produccion/registrar-componente', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadExistente)
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Error al registrar el componente');
-            return response.text();
-        })
-        .then(data => {
-            console.log('Respuesta del servidor:',data);
-            if(data.includes('se ha registrado correctamente')){
-                if (mensaje) {
-                    mensaje.textContent = "Componente registrado correctamente";
-                    mensaje.className = "success";
-                }
-            }else{
-                throw new Error('Error desconocido al registrar el componente');
-            }
-            
-        })
-        .catch(error => {
-            console.error('Error al registrar el componente (existente):', error);
-            if (mensaje) {
-                mensaje.textContent = "Error al registrar el componente. Intente nuevamente.";
-                mensaje.className = "error";
-            }
-        });
-
-        return; // ya se manejó el caso existente (fetch en curso)
-    }
-
+    
+    //creamos uno nuevo
     const nombreProducto = await obtenerNombreProductoPorCodigo(codigo);
     const nuevoComponente = {
         nombre: nombreProducto,
@@ -418,7 +430,7 @@ async function escanearComponente(codigo) {
         cantidad: 1,
     };
 
-    // Añade a la UI
+    
     const li = document.createElement('li');
     li.textContent = `Nombre:${nuevoComponente.nombre} (Código: ${nuevoComponente.codigo}) - Cantidad: ${nuevoComponente.cantidad}`;
     listaElement.appendChild(li);
@@ -436,59 +448,51 @@ async function escanearComponente(codigo) {
         }
     };
 
-    // paso 2: enviamos la informacion al endpoint para que se registre en la BD.
-    fetch('http://localhost:9090/api/produccion/registrar-componente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Error al registrar el componente');
-        return response.text();
-    }).then(data => {
-            console.log('Respuesta del servidor:',data);
-            if(data.includes('se ha registrado correctamente el ValeProduccionDetalle:')){
-                if (mensaje) {
-                    mensaje.textContent = "Componente registrado correctamente";
-                    mensaje.className = "success";
-                }
-            }else{
-                throw new Error('Error desconocido al registrar el componente');
+    try{
+        const data = await apiFetch("/api/produccion/registrar-componente", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        console.log('Respuesta del servidor:', data);
+        if(data.success){
+            const mensaje = document.getElementById('mensaje');
+            if (mensaje) {
+                mensaje.textContent = data.message || "Componente registrado correctamente.";
+                mensaje.className = "success";
             }
-            
+        } else {
+            console.error('Error al registrar el componente nuevo:', data.message);
+            const mensaje = document.getElementById('mensaje');
+            if (mensaje) {
+                mensaje.textContent = data.message || "Error al registrar el componente. Intente nuevamente.";
+                mensaje.className = "error";
+            }
         }
-    )
-    .catch(error => {
-        console.error('Error al registrar el componente:', error);
-        if (mensaje) {
-            mensaje.textContent = "Error al registrar el componente. Intente nuevamente.";
-            mensaje.className = "error";
-        }
-    });
-}
 
-
-
-function agregarComponenteAlGlobal() {
-   // actualizarLista();
-    mensaje.textContent = "Componente agregado correctamente.";
-    mensaje.className = "success";
-    codigoComponenteInput.value = "";
-    codigoComponenteInput.focus();
+    }catch (error){
+        console.error('Error al registrar el componente nuevo:', error);
+        mensaje.textContent = "Error al registrar el componente. Intente nuevamente.";
+        mensaje.className = "error";
+    }
     let cantidad_actual = localStorage.getItem('cantidadActual') ? parseInt(localStorage.getItem('cantidadActual'), 10) : 0;
-    cantidad_actual += 1;
-    localStorage.setItem('cantidadActual', cantidad_actual);
-    
+    let cantMaxcompPuesto = localStorage.getItem('maxComponentes') ? parseInt(localStorage.getItem('maxComponentes'), 10) : 4;
+    if(cantidad_actual>= cantMaxcompPuesto){
+        return true;
+    }
+
 }
 
 
-function obtenerDatosUsuarioDeURL() {
+
+
+async function obtenerDatosUsuarioDeURL() {
     const params = new URLSearchParams(window.location.search);
     //si no encontra parametros, los busca en el localstorage.
     if (!params.has('username') || !params.has('nombre') || !params.has('puesto')) {
-        const storedUsername = localStorage.getItem('username') || 'invitado';
-        const storedNombre = localStorage.getItem('nombre') || 'Invitado';
-        const storedPuesto = localStorage.getItem('puesto') || 0;
+        const storedUsername = localStorage.getItem('username');
+        const storedNombre = localStorage.getItem('nombre');
+        const storedPuesto = localStorage.getItem('puesto');
         params.set('username', storedUsername);
         params.set('nombre', storedNombre);
         params.set('puesto', storedPuesto);
@@ -517,121 +521,89 @@ function obtenerDatosUsuarioDeURL() {
     return UsuarioDTO;
 }
 
-
-function registrarComponenteEnBackend(codigoProducto, componente, puesto, usuarioDTO) {
-    fetch(`http://localhost:9090/api/produccion/registrar-componente?codigoProducto=${encodeURIComponent(codigoProducto)}&puesto=${puesto}&usuarioDTO=${encodeURIComponent(JSON.stringify(usuarioDTO))}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(componente)
-    })
-    .then(response => {
-        if(response.textContent.includes('se ha registrado correctamente el ValeProduccionDetalle:')){
-            if (mensaje) {
-                mensaje.textContent = "Componente registrado correctamente";
-                mensaje.className = "success";
-            }
-        }else{
-            throw new Error('Error desconocido al registrar el componente');
-        }
-        if (!response.ok) throw new Error('Error al registrar el componente');
-        return response.text();
-    });
-}
-
-
-
-
-function pasarAlsiguientePuesto() {
+async function pasarAlsiguientePuesto() {
+    console.log("Iniciando proceso para pasar al siguiente puesto...");
     const confirmacion = window.confirm("¿Desea pasar el producto al siguiente puesto?");
     if (!confirmacion) return;
     if (confirmacion) {
-        let codigoProductoFinal = localStorage.getItem('codigoProductoFinal') || "";
-        console.log("codigoproductofinal:", codigoProductoFinal);
-        if (!codigoProductoFinal) {
-            //si no lo consigue del main content, lo busca en la variable global.
-            codigoProductoFinal = localStorage.getItem('codigoProductoFinal') || "";
-        }
-        if (!codigoProductoFinal) {
-
-            alert("No se ha generado o encontrado el código del producto final. No se puede continuar.");
-            return;
-        }
-        let puestoactual = localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0;
-        if (puestoactual <= 0) {
-            alert("El puesto actual no es válido. No se puede continuar.");
-            return;
-        }
-
-        const payload = {
-            codigoProducto: codigoProductoFinal,
-            puestoActual: puestoactual,
-            codProd: window.codigoProducto || "",
-        };
-
-
-
-
-        // Envía el JSON con la información actual a la BD para pasar al siguiente puesto
-        fetch('http://localhost:9090/api/produccion/siguientePuesto',{
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor');
+        try{
+           
+            let codigoProductoFinal = localStorage.getItem('codigoProductoFinal') || "";
+            console.log("codigoproductofinal:", codigoProductoFinal);
+            if (!codigoProductoFinal) {
+                //si no lo consigue del main content, lo busca en la variable global.
+                codigoProductoFinal = localStorage.getItem('codigoProductoFinal') || "";
             }
-            return response.text();
-        })
-        .then(text => {
-            // informar al usuario que se pasó al siguiente puesto
-            alert("Producto enviado al siguiente puesto");
-            console.log('Respuesta del servidor(texto):',text );
-            if(text.includes('ha pasado al proximo puesto')){
-                if (mensaje) {
-                    mensaje.textContent = "Producto pasado al siguiente puesto correctamente.";
-                    mensaje.className = "success";
+            if (!codigoProductoFinal) {
+                alert("No se ha generado o encontrado el código del producto final. No se puede continuar.");
+                return;
+            }
+            let puestoactual = localStorage.getItem('puesto') ? parseInt(localStorage.getItem('puesto'), 10) : 0;
+            if (puestoactual <= 0) {
+                alert("El puesto actual no es válido. No se puede continuar.");
+                return;
+            }
+            //creamos el payload.
+            const payload = {
+                codigoProducto: codigoProductoFinal,
+                puestoActual: puestoactual,
+                usuario: {
+                    id: window.userId || 0,
+                    username: window.userInfo.username || "invitado",
+                    nombre: localStorage.getItem("nombre") || "Invitado"
                 }
+            };
+            
+            //continuamos con el fetch.
+            const data = await apiFetch('/api/produccion/siguientePuesto',{
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if(data.success){
+                mensaje.textContent = data.message || "Producto pasado al siguiente puesto correctamente.";
+                mensaje.className = "success";
                 //limpiar storage y preparar nuevo ciclo.
                 limpiarStorage();
                 iniciarProcesos();
                 accionarPorPuesto();
-
-            }
-        })
-        .catch(error => {
-            console.error('Error al pasar al siguiente puesto:', error);
-            const mensaje = document.getElementById('mensaje');
-            if (mensaje) {
-                mensaje.textContent = "Error al pasar al siguiente puesto. Intente nuevamente.";
+            }else{
+                mensaje.textContent = data.message || "Error al pasar al siguiente puesto. Intente nuevamente.";
                 mensaje.className = "error";
             }
-        });
-    }else {
-        alert("Operación cancelada. El producto permanece en el puesto actual.");
-    }    
+        } catch (error) {
+            console.error('Error al pasar al siguiente puesto:', error);
+            mensaje.textContent = "Error al pasar al siguiente puesto. Intente nuevamente.";
+            mensaje.className = "error";
+        }
+    } else {
+        mensaje.textContent = "Acción de pasar al siguiente puesto cancelada.";
+        mensaje.className = "info";
+    }
 };
 
 
 
 // Eventos de botones
-
 btnEscanear.addEventListener('click', async () => {
-    await EscanearCodigo(); // Espera a que termine el escaneo
-    
-    //validamos si es el ultimo componente.
-    const cantidadActual = localStorage.getItem('cantidadActual') ? parseInt(localStorage.getItem('cantidadActual'), 10) : 0;
-    maxComponentes = localStorage.getItem('maxComponentes') ? parseInt(localStorage.getItem('maxComponentes'), 10) : 4;
-    
-    if (cantidadActual >= maxComponentes) {
-        mensaje.textContent = "Se han escaneado todos los componentes requeridos.";
+    const completo = await EscanearCodigo();
+
+    // ✅ limpiar campo y mantener foco
+    codigoComponenteInput.value = '';
+    codigoComponenteInput.focus();
+
+    if (completo) {
+        const mensaje = document.getElementById('mensaje');
+        mensaje.textContent = "🎉 Se han escaneado todos los componentes requeridos.";
         mensaje.className = "success";
-        // Espera un momento antes de pasar al siguiente puesto
+
+        // Espera un poco antes de pasar al siguiente puesto
         setTimeout(() => {
             pasarAlsiguientePuesto();
         }, 1000);
     }
 });
+
 btnLogout.addEventListener('click', () => {
     // Limpiar el localStorage y redirigir al login o página principal
     localStorage.clear();
@@ -653,11 +625,12 @@ function limpiarStorage(){
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
+export function inicializarEscaneo(){
+    console.log("Inicializando lógica de escaneo de línea...");
     limpiarStorage();
     // --- Información principal ---
     obtenerDatosUsuarioDeURL(); // obtiene los datos del usuario desde la URL
     buscarInfo(); // busca la información principal desde la BD
     accionarPorPuesto(); // acciona la UI según el puesto del usuario
-    
-});
+
+}

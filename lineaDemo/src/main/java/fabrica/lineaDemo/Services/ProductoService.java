@@ -38,9 +38,9 @@ public class ProductoService {
     }
 
     public String buscarNombrePorCodigo (String codigo){
-        Producto prod = productoRepository.findByCodigo(codigo).orElseThrow(() -> new IllegalArgumentException("no se encontro el Producto con ese codigo"+ codigo));
-        String nombre = prod.getNombre();
-        return nombre;
+        return productoRepository.findByCodigo(codigo)
+                .map(Producto::getNombre)
+                .orElse("producto No encontrado");
     }
 
 }

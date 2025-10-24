@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/produccion")
 public class ProduccionController {
@@ -61,35 +64,48 @@ public class ProduccionController {
             //cambiar a un CargaRegistroDTO
             @RequestBody CargaRegistroDTO cargaRegistroDTO
             ){
+        Map<String, Object> response = new HashMap<>();
         try{
             produccionService.registrarComponente(cargaRegistroDTO);
-            return ResponseEntity.ok().body("se ha registrado correctamente el ValeProduccionDetalle:");
+            response.put("success",true);
+            response.put("message","se ha registrado correctamente el ValeProduccionDetalle.");
+            return ResponseEntity.ok(response);
         }catch (IllegalArgumentException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            response.put("success", false);
+            response.put("error",e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
     }
     @PostMapping("/consolidar")
-    public ResponseEntity<String> consolidar(@RequestParam String codigoProducto){
+    public ResponseEntity<?> consolidar(@RequestParam String codigoProducto){
         produccionService.consolidar(codigoProducto);
         return ResponseEntity.ok("Vale consolidado para el producto:"+ codigoProducto);
     }
 
     @PostMapping("/siguientePuesto")
     public ResponseEntity<Object> pasarAlSiguientePuesto(@RequestBody PasarPuestoDTO pasarPuestoDTO){
+        Map<String, Object> response = new HashMap<>();
         try{
-            //validar que no sea el ultimo puesto.
 
+            //validar que todos los componentes para este puesto fueron registrados.
             boolean validar = produccionService.pasarSiguientePuesto(pasarPuestoDTO.getCodigoProducto(),pasarPuestoDTO.getPuestoActual());
             if (validar){
+                //validamos que no sea el ultimo puesto, sino consolidamos el producto como terminado.
                 boolean noesUltimo = produccionService.noEsUltimoPuesto(pasarPuestoDTO.getCodigoProducto(),pasarPuestoDTO.getPuestoActual());
                 if (!noesUltimo){
                     //si da false, es porque el puestoactual es mayor,osea el ultimo puesto.
                     produccionService.consolidar(pasarPuestoDTO.getCodigoProducto());
-                    return ResponseEntity.ok().body("se ha registrado el ultimo componente de la formula en este ultimo puesto. PRODUCTO COMPLETADO.");
+                    response.put("success",true);
+                    response.put("message","se ha registrado el ultimo componente de la formula en este ultimo puesto. PRODUCTO COMPLETADO.");
+                    return ResponseEntity.ok().body(response);
 
                 }
-                return ResponseEntity.ok("Producto:"+ pasarPuestoDTO.getCodigoProducto() +"paso al puesto"+(pasarPuestoDTO.getPuestoActual()+1));
+                //pasamos el estado del puesto para el proximo.
+                produccionService.pasarEstadoDePuesto(pasarPuestoDTO);
+                response.put("success",true);
+                response.put("message","El Producto:"+ pasarPuestoDTO.getCodigoProducto()+"paso al puesto"+(pasarPuestoDTO.getPuestoActual()+1));
+                return ResponseEntity.ok(response);
             }
 
         }catch (IllegalArgumentException e){
@@ -105,6 +121,7 @@ public class ProduccionController {
 
    @PostMapping("/pendientes")
    public ResponseEntity<?> ConsultarPendientes(@RequestBody ConsultarPendientesDTO consultarPendientesDTO) {
+        Map<String, String> response = new HashMap<>();
        ValeLectura valePendiente = null;
        try {
            // verifica que exista un Valedetalle del anterior puesto para el producto a realizar.
@@ -115,9 +132,9 @@ public class ProduccionController {
            } else if (ultimoPuestoCompleado = true) {
               try {
                   //consultamos el servicio para revisar el trazado actual.
-                  valePendiente = produccionService.ConsultarPendientes(consultarPendientesDTO.getCodigoProducto(),consultarPendientesDTO.getIdPuestoActual(),consultarPendientesDTO.getUsuario());
-              }catch (NoSuchFieldException a){
-                  return ResponseEntity.badRequest().body("no se ha encontrado un valeProduccion,ERROR: "+a.getMessage());
+                  valePendiente = produccionService.ConsultarPendientes(consultarPendientesDTO);
+              }catch (Exception a){
+                  return ResponseEntity.badRequest().body("Error al consultarPendientes(): "+a.getMessage());
               }
            }
        } catch (IllegalArgumentException b) {

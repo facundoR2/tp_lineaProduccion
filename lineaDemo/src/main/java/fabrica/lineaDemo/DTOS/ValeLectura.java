@@ -10,7 +10,6 @@ public class ValeLectura {
     private String idTrazado; // identificador unico de instancia (Cproducto-nrounico)
 
 
-
     private String codigoProducto; //serial del producto terminado.
 
     private Integer puestoActual; //el puesto en el que se encuentra actualmente.
@@ -19,16 +18,19 @@ public class ValeLectura {
 
     private String estado; // en_proceso;  terminado_ok;
 
+    private String mensaje;
+
 
     private List<ComponenteDTO> componentes = new ArrayList<>();
 
     private UsuarioDTO usuario;
 
-    public ValeLectura(){}
+    public ValeLectura() {
+    }
 
 
-    public ValeLectura(String idTrazado, String codigoProducto,Integer puestoActual,
-                       List<ComponenteDTO> componentes, UsuarioDTO usuario){
+    public ValeLectura(String idTrazado, String codigoProducto, Integer puestoActual,
+                       List<ComponenteDTO> componentes, UsuarioDTO usuario) {
         this.idTrazado = idTrazado;
         this.codigoProducto = codigoProducto;
         this.puestoActual = puestoActual;
@@ -94,5 +96,13 @@ public class ValeLectura {
 
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public String getMensaje() {
+        return mensaje;
+    }
+
+    public void setMensaje(String mensaje) {
+        this.mensaje = mensaje;
     }
 }
